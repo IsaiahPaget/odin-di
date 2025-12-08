@@ -50,14 +50,6 @@ destroy_scheduler :: proc(scheduler: ^Scheduler($max_systems)) {
 	delete(scheduler.resources)
 }
 
-// NOTE: there are version of this 1-6 in boilerplate.odin
-// make_system :: proc(func: proc()) -> System {
-// 	run :: proc(self: ^System, resources: ^ResourceMap) {
-// 		self.func()
-// 	}
-//
-// 	return System(proc()){run = run, func = func}
-// }
 make_system :: proc {
 	make_system_0,
 	make_system_1,
