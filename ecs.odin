@@ -78,6 +78,11 @@ testing_vec :: proc(position: [2]f32, mut_position: ^[2]f32) {
 	mut_position[0] += 10
 	fmt.println(mut_position)
 }
+testing_vec_2 :: proc(position: [2]f32, mut_position: ^[2]f32) {
+	fmt.println(position)
+	mut_position[0] += 10
+	fmt.println(mut_position)
+}
 
 
 @(test)
@@ -121,6 +126,7 @@ main :: proc() {
 	add_system(&scheduler, int, string, print_int_and_string)
 	add_system(&scheduler, int, string, print_int_and_string_2)
 	add_system(&scheduler, [2]f32, ^[2]f32, testing_vec)
+	add_system(&scheduler, [2]f32, ^[2]f32, testing_vec_2)
 
 	// Run them
 	for {

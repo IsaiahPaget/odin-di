@@ -53,7 +53,7 @@ add_system_0 :: proc(scheduler: ^Scheduler($max_systems), system: proc()) {
 	fmt.assertf(system != nil, "system is nil")
 	sa.append(&scheduler.systems, make_system(system))
 }
-add_system_1 :: proc(scheduler: ^Scheduler($max_systems), $T1: typeid, system: proc(_: T1)) {
+add_system_1 :: proc(scheduler: ^Scheduler($max_systems), $T1: typeid, system: proc(T1)) {
 	fmt.assertf(scheduler != nil, "scheduler is nil")
 	fmt.assertf(system != nil, "system is nil")
 	sa.append(&scheduler.systems, make_system(T1, system))
@@ -61,7 +61,7 @@ add_system_1 :: proc(scheduler: ^Scheduler($max_systems), $T1: typeid, system: p
 add_system_2 :: proc(
 	scheduler: ^Scheduler($max_systems),
 	$T1, $T2: typeid,
-	system: proc(_: T1, _: T2),
+	system: proc(T1, T2),
 ) {
 	fmt.assertf(scheduler != nil, "scheduler is nil")
 	fmt.assertf(system != nil, "system is nil")
