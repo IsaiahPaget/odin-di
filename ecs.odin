@@ -9,8 +9,8 @@ MAX_SYSTEMS :: 5
 MAX_ENTITIES :: 2
 StoredSystem :: ^System
 
-Scheduler :: struct($N: int) {
-	systems:   sa.Small_Array(N, StoredSystem),
+Scheduler :: struct {
+	systems:   sa.Small_Array(MAX_SYSTEMS, StoredSystem),
 	resources: ResourceMap,
 }
 
@@ -23,7 +23,7 @@ FunctionSystem :: struct($Input: typeid) {
 	func:   Input,
 }
 
-add_resource :: proc(scheduler: ^Scheduler($N), resource: any) {
+add_resource :: proc(scheduler: ^Scheduler, resource: any) {
 	fmt.assertf(scheduler != nil, "scheduler is nil")
 	fmt.assertf(resource.data != nil, "resource is nil")
 	scheduler.resources[resource.id] = resource
@@ -34,7 +34,7 @@ add_system :: proc {
 	add_system_2,
 }
 
-scheduler_run :: proc(scheduler: ^Scheduler($make_systems)) {
+scheduler_run :: proc(scheduler: ^Scheduler) {
 	fmt.assertf(scheduler != nil, "scheduler is nil")
 	for system in sa.slice(&scheduler.systems) {
 		fmt.assertf(system != nil, "system is nil")
@@ -42,13 +42,15 @@ scheduler_run :: proc(scheduler: ^Scheduler($make_systems)) {
 	}
 }
 
-init_scheduler :: proc() -> Scheduler(MAX_SYSTEMS) {
-	return Scheduler(MAX_SYSTEMS){}
-}
-
-destroy_scheduler :: proc(scheduler: ^Scheduler($N)) {
+destroy_scheduler :: proc(scheduler: ^Scheduler) {
 	fmt.assertf(scheduler != nil, "scheduler is nil")
 	delete(scheduler.resources)
+}
+
+destroy_ecs :: proc(ecs: ^ECS($N)) {
+	fmt.assertf(ecs != nil, "ecs is nil")
+	delete(ecs.components)
+	delete(ecs.dispatch_table)
 }
 
 make_system :: proc {
@@ -84,6 +86,7 @@ testing_vec_2 :: proc(position: [2]f32, mut_position: ^[2]f32) {
 	mut_position[0] += 10
 	fmt.println(mut_position)
 }
+
 Handle :: struct {
 	index: int,
 	id:    int,
@@ -98,11 +101,18 @@ FunctionComponents :: struct($N: int, $T: typeid) {
 
 StoredComponents :: ^Components
 
+ComponentsMap :: distinct map[typeid]StoredComponents
+
+ComponentDispatch :: struct {
+	add_to_resources: proc(val: StoredComponents, handle: Handle, scheduler: ^Scheduler)
+}
+
 ECS :: struct($N: int) {
 	latest_id:        int,
 	entity_top_count: int,
 	entities:         [N]Handle,
-	components:       map[typeid]StoredComponents,
+	components:       ComponentsMap,
+	dispatch_table:   map[typeid]ComponentDispatch,
 	entity_free_list: [dynamic]int,
 	scratch:          struct {
 		all_entities: []Handle,
@@ -114,6 +124,17 @@ register_component :: proc(ecs: ^ECS($N), $T: typeid) {
 	fmt.assertf(&ecs.components[T] == nil, "Already registered component")
 
 	ecs.components[T] = make_component(N, T)
+	
+	ecs.dispatch_table[T] = ComponentDispatch{
+		add_to_resources = proc(val: StoredComponents, handle: Handle, scheduler: ^Scheduler) {
+			sched := cast(^Scheduler)scheduler
+			parent := cast(^FunctionComponents(N, T))val
+			if parent.pool[handle.index] != nil {
+				add_resource(sched, parent.pool[handle.index])
+				add_resource(sched, &parent.pool[handle.index])
+			}
+		}
+	}
 }
 
 make_component :: proc($N: int, $T: typeid) -> StoredComponents {
@@ -128,20 +149,20 @@ component_to_function_component :: proc(
 ) -> ^FunctionComponents(N, T) {
 	return cast(^FunctionComponents(N, T))c
 }
+
 add_component :: proc(ecs: ^ECS($N), handle: Handle, component: $T) {
 	fmt.assertf(ecs != nil, "ecs is nil")
 	parent := component_to_function_component(ecs.components[T], N, T)
 	parent.pool[handle.index] = component
 }
 
-run_systems :: proc(ecs: ^ECS($N), scheduler: ^Scheduler($N2)) {
+run_systems :: proc(ecs: ^ECS($N), scheduler: ^Scheduler) {
 	fmt.assertf(ecs != nil, "ecs is nil")
 	for handle in ecs.entities {
 		for key, val in ecs.components {
-			parent := component_to_function_component(val, N2, type_of(key))
-			if parent.pool[handle.index] == nil do continue
-			add_resource(scheduler, parent.pool[handle.index]) // view
-			add_resource(scheduler, &parent.pool[handle.index]) // mutable
+			if dispatch, ok := ecs.dispatch_table[key]; ok {
+				dispatch.add_to_resources(val, handle, scheduler)
+			}
 		}
 
 		scheduler_run(scheduler)
@@ -184,17 +205,15 @@ main :: proc() {
 	add_component(&ecs, entity, Transform{x = 69, y = 69})
 	fmt.printf("%#v\n", ecs)
 
-	scheduler := init_scheduler()
+	scheduler: Scheduler
 
 	// Create systems
-	add_system(&scheduler, hello_world)
-	add_system(&scheduler, int, print_int)
-	add_system(&scheduler, int, print_int)
-	add_system(&scheduler, int, string, print_int_and_string)
-	add_system(&scheduler, int, string, print_int_and_string_2)
-	add_system(&scheduler, [2]f32, ^[2]f32, testing_vec)
-	add_system(&scheduler, [2]f32, ^[2]f32, testing_vec_2)
+	add_system(&scheduler, ^Transform, update_position)
 
 	// Run them
 	run_systems(&ecs, &scheduler)
+}
+
+update_position :: proc(transform: ^Transform) {
+	fmt.println(transform)
 }
