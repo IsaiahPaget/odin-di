@@ -30,10 +30,8 @@ make_system_1 :: proc($T1: typeid, f: proc(_: T1)) -> ^System {
 		// cast back: the incoming pointer points to the `system` field inside FunctionSystem
 		parent := cast(^FunctionSystem(proc(_: T1)))system // pointer reinterpretation
 		fmt.assertf(parent != nil, "parent struct is nil")
-		if resources[T1] != nil {
-			_1 := resources[T1].(T1)
-			parent.func(_1)
-		}
+		_1 := resources[T1]
+		parent.func(_1.(T1))
 	}
 
 	fs.system.run = run_proc
@@ -47,9 +45,9 @@ make_system_2 :: proc($T1: typeid, $T2: typeid, f: proc(_: T1, _: T2)) -> ^Syste
 	run_proc := proc(system: ^System, resources: ^ResourceMap) {
 		// cast back: the incoming pointer points to the `system` field inside FunctionSystem
 		parent := cast(^FunctionSystem(proc(_: T1, _: T2)))system // pointer reinterpretation
-		_1 := resources[T1].(T1)
-		_2 := resources[T2].(T2)
-		parent.func(_1, _2)
+		_1 := resources[T1]
+		_2 := resources[T2]
+		parent.func(_1.(T1), _2.(T2))
 	}
 
 	fs.system.run = run_proc

@@ -25,7 +25,6 @@ FunctionSystem :: struct($Input: typeid) {
 
 add_resource :: proc(scheduler: ^Scheduler, resource: any) {
 	fmt.assertf(scheduler != nil, "scheduler is nil")
-	fmt.assertf(resource.data != nil, "resource is nil")
 	scheduler.resources[resource.id] = resource
 }
 add_system :: proc {
@@ -96,7 +95,7 @@ Components :: struct {}
 
 FunctionComponents :: struct($N: int, $T: typeid) {
 	components: Components,
-	pool:       [N]Maybe(T),
+	pool:       [N]T,
 }
 
 StoredComponents :: ^Components
@@ -127,12 +126,11 @@ register_component :: proc(ecs: ^ECS($N), $T: typeid) {
 	
 	ecs.dispatch_table[T] = ComponentDispatch{
 		add_to_resources = proc(val: StoredComponents, handle: Handle, scheduler: ^Scheduler) {
-			sched := cast(^Scheduler)scheduler
 			parent := cast(^FunctionComponents(N, T))val
-			if parent.pool[handle.index] != nil {
-				add_resource(sched, parent.pool[handle.index])
-				add_resource(sched, &parent.pool[handle.index])
-			}
+			fmt.assertf(parent != nil, "parent is nil")
+			// fmt.assertf(parent.pool[handle.index] != nil, "component is nil")
+			add_resource(scheduler, parent.pool[handle.index])
+			// add_resource(scheduler, &parent.pool[handle.index])
 		}
 	}
 }
@@ -208,12 +206,12 @@ main :: proc() {
 	scheduler: Scheduler
 
 	// Create systems
-	add_system(&scheduler, ^Transform, update_position)
+	add_system(&scheduler, Transform, update_position)
 
 	// Run them
 	run_systems(&ecs, &scheduler)
 }
 
-update_position :: proc(transform: ^Transform) {
+update_position :: proc(transform: Transform) {
 	fmt.println(transform)
 }
