@@ -1,4 +1,4 @@
-package ecs
+package main
 import sa "core:container/small_array"
 import "core:fmt"
 import vmem "core:mem/virtual"
